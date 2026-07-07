@@ -15,6 +15,7 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
     final NumberFormat rupiahFormatter =
       NumberFormat('#,##0', 'id_ID');
+  @override
   void initState() {
     super.initState();
 
