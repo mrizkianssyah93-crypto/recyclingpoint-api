@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "703626794798",
+    "project_id": "recycling-point-9b5c1",
+    "storage_bucket": "recycling-point-9b5c1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:703626794798:android:09cc5aed75ebc8be050cbf",
+        "android_client_info": {
+          "package_name": "com.example.recyclingpoint_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzARJpuwW8fV9yFC_-YZRL5AC7VvyuWWs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
