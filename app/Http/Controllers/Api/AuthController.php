@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Http\Controllers\Api;
@@ -19,15 +18,18 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'username' => ['required', 'string'],
-            'password' => ['required', 'string'],
-        ]);
-
-        $stage = 'auth_attempt';
+        $stage = 'validation';
 
         try {
+            // Validate login request
+            $credentials = $request->validate([
+                'username' => ['required', 'string'],
+                'password' => ['required', 'string'],
+            ]);
+
             // Authenticate user
+            $stage = 'auth_attempt';
+
             if (!Auth::attempt($credentials)) {
                 return response()->json([
                     'success' => false,
@@ -37,6 +39,7 @@ class AuthController extends Controller
 
             // Get authenticated user
             $stage = 'get_user';
+
             $user = Auth::user();
 
             if (!$user) {
@@ -45,10 +48,12 @@ class AuthController extends Controller
 
             // Delete previous tokens
             $stage = 'delete_old_tokens';
+
             $user->tokens()->delete();
 
             // Create new Sanctum token
             $stage = 'create_token';
+
             $token = $user->createToken('mobile-app')->plainTextToken;
 
             // Return login response
@@ -75,17 +80,22 @@ class AuthController extends Controller
 
         } catch (\Throwable $e) {
 
+            // Log detailed error for debugging
             Log::error('Mobile Login Error', [
                 'stage' => $stage,
-                'username' => $credentials['username'],
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
 
+            // Temporary debugging response
             return response()->json([
                 'success' => false,
                 'message' => 'Login processing failed.',
+                'stage' => $stage,
+                'error' => $e->getMessage(),
+                'file' => basename($e->getFile()),
+                'line' => $e->getLine(),
             ], 500);
         }
     }
