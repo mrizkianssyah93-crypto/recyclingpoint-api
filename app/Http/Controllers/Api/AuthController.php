@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers\Api;
@@ -6,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Google\Client as GoogleClient;
 use App\Models\User;
@@ -22,38 +24,70 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (!Auth::attempt($credentials)) {
+        $stage = 'auth_attempt';
+
+        try {
+            // Authenticate user
+            if (!Auth::attempt($credentials)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Username atau password salah.',
+                ], 401);
+            }
+
+            // Get authenticated user
+            $stage = 'get_user';
+            $user = Auth::user();
+
+            if (!$user) {
+                throw new \Exception('Authenticated user not found.');
+            }
+
+            // Delete previous tokens
+            $stage = 'delete_old_tokens';
+            $user->tokens()->delete();
+
+            // Create new Sanctum token
+            $stage = 'create_token';
+            $token = $user->createToken('mobile-app')->plainTextToken;
+
+            // Return login response
+            $stage = 'return_response';
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login berhasil.',
+                'data' => [
+                    'token' => $token,
+                    'user' => [
+                        'id'       => $user->id,
+                        'nama'     => $user->nama,
+                        'username' => $user->username,
+                        'email'    => $user->email,
+                        'role'     => $user->role,
+                        'poin'     => $user->poin,
+                        'foto'     => $user->foto,
+                        'no_hp'    => $user->no_hp,
+                        'alamat'   => $user->alamat,
+                    ],
+                ],
+            ]);
+
+        } catch (\Throwable $e) {
+
+            Log::error('Mobile Login Error', [
+                'stage' => $stage,
+                'username' => $credentials['username'],
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Username atau password salah.',
-            ], 401);
+                'message' => 'Login processing failed.',
+            ], 500);
         }
-
-        $user = Auth::user();
-
-        // Optional: hanya 1 token aktif
-        $user->tokens()->delete();
-
-        $token = $user->createToken('mobile-app')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Login berhasil.',
-            'data' => [
-                'token' => $token,
-                'user' => [
-                    'id'       => $user->id,
-                    'nama'     => $user->nama,
-                    'username' => $user->username,
-                    'email'    => $user->email,
-                    'role'     => $user->role,
-                    'poin'     => $user->poin,
-                    'foto'     => $user->foto,
-                    'no_hp'    => $user->no_hp,
-                    'alamat'   => $user->alamat,
-                ],
-            ],
-        ]);
     }
 
     /**
@@ -85,7 +119,7 @@ class AuthController extends Controller
             $name = $payload['name'] ?? 'Google User';
             $picture = $payload['picture'] ?? null;
 
-            // Cari user berdasarkan email
+            // Find user by email
             $user = User::where('email', $email)->first();
 
             if (!$user) {
@@ -119,14 +153,15 @@ class AuthController extends Controller
                 ]);
             }
 
-            // Update informasi login
+            // Update login information
             $user->last_login_at = now();
             $user->failed_login_attempt = 0;
             $user->save();
 
-            // Optional: hanya 1 token aktif
+            // Delete previous tokens
             $user->tokens()->delete();
 
+            // Create new Sanctum token
             $token = $user->createToken('mobile-app')->plainTextToken;
 
             return response()->json([
@@ -148,13 +183,18 @@ class AuthController extends Controller
                 ],
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+
+            Log::error('Google Login Error', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Google login processing failed.',
             ], 500);
-
         }
     }
 
